@@ -13,7 +13,7 @@
  
 /*:
  * @plugindesc Triggers a common event when an item is equipped or removed. 
- * @author Anonymous
+ * @author rsr27
  *
  * @param equipEventId
  * @desc The common event to be called when an item is equipped

@@ -13,7 +13,7 @@
  
 /*:
  * @plugindesc Changes the currency to a dollar and cents one.
- * @author Anonymous
+ * @author rsr27
  *
  */
  
