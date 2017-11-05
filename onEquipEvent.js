@@ -1,11 +1,16 @@
 //=============================================================================
 // onEquipEvent
-// by Anonymous
+// by rsr27
 // Date: 7/27/2017
-
+//
+// License: 
+// https://creativecommons.org/licenses/by-nc-nd/3.0/
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
 //=============================================================================
  
-
 /*:
  * @plugindesc Triggers a common event when an item is equipped or removed. 
  * @author Anonymous
