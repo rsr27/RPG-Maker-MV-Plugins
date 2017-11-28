@@ -4,6 +4,11 @@
 // Date: 11/26/2017
 // v1.0
 //
+// Changelog:
+//
+// v1.0:
+// Initial release. Some bugs may be present.
+//
 // License: 
 // https://creativecommons.org/licenses/by-nc-nd/3.0/
 //
