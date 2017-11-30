@@ -6,6 +6,9 @@
 //
 // Changelog:
 //
+// v1.1:
+// Added wordwrapping and the label of the selected entry.
+//
 // v1.0:
 // Initial release. Some bugs may be present.
 //
@@ -86,10 +89,13 @@
 		$Journal = new Object(null);
 		
 		$Journal._display_entry = 0;
+		$Journal._fixed_text = "";
 		
 		$Journal._id = [];
 		$Journal._title = [];
 		$Journal._entry = [];
+		
+		const TEXT_AREA_WIDTH = 500;
 		
 		var parameters = PluginManager.parameters('journal');
 		
@@ -220,25 +226,34 @@
 		Window_JournalText.prototype.constructor = Window_JournalText;
 
 		Window_JournalText.prototype.initialize = function() {
-			Window_Base.prototype.initialize.call(this, 316, this.fittingHeight(1), 500, Graphics.boxHeight - this.fittingHeight(1));
+			Window_Base.prototype.initialize.call(this, 316, this.fittingHeight(1), TEXT_AREA_WIDTH, Graphics.boxHeight - this.fittingHeight(1));
 			this.refresh();
 		};
 
 		Window_JournalText.prototype.refresh = function() {
+			
 			this.contents.clear();
 			
 			if ($Journal._entry.length > 0 && $Journal._display_entry >= 0 && $Journal._display_entry < $Journal._entry.length) {
 				
-				var text_array = $Journal._entry[$Journal._display_entry].split("\n");
+				var text = $Journal._fixed_text;
+				var text_array = text.split("\n");
+
+				this.changeTextColor(this.systemColor());	
+				this.drawText($Journal._title[$Journal._display_entry], 0, 0, Graphics.boxWidth, "left");
 				
-				for (var i = 0; i < text_array.length; i++ ) {
-					this.drawText(text_array[i], 0, i * (this.fittingHeight(1) / 2), Graphics.boxWidth, "left");
-				}
-				
+									this.resetTextColor();
+				for (var i = 0; i < text_array.length; i++) {
+					this.drawText(text_array[i], 0, (i + 1) * (this.fittingHeight(1) / 2), Graphics.boxWidth, "left");
+				};
 				
 				
 			};
 		};
+		
+		Window_JournalText.prototype.measureText = function(text) {
+			return this.textWidth(text);
+		}
 		
 		// -----------------------------------------------------
 		
@@ -254,7 +269,45 @@
 		};
 
 		Scene_Journal.prototype.onCategoryOk = function() {
+			
 			$Journal._display_entry = this._sidebarWindow._index;
+			
+			if ($Journal._display_entry >= 0 && $Journal._display_entry < $Journal._entry.length) {
+				
+				var formatted_text = "";
+				var last_space = 0;
+				var last_start = 0;
+				
+				for (var i = 0; i < $Journal._entry[$Journal._display_entry].length; i++) {
+					
+					var c = $Journal._entry[$Journal._display_entry][i];
+					
+					if (c == ' ') {
+						last_space = i;
+					}
+					
+					var w = this._textWindow.measureText($Journal._entry[$Journal._display_entry].substring(last_start, i).trim());
+					
+					var text = "";
+			
+					if (w + 36 > TEXT_AREA_WIDTH) {
+						
+						text = $Journal._entry[$Journal._display_entry].substring(last_start, last_space).trim();
+						formatted_text += text + "\n";
+						last_start = last_space + 1;
+						i = last_start;		
+						continue;
+					}
+					else if (i == $Journal._entry[$Journal._display_entry].length - 1) {
+						text = $Journal._entry[$Journal._display_entry].substring(last_start - 1, $Journal._entry[$Journal._display_entry].length).trim();
+						formatted_text += text;
+						break;
+					}
+				};
+				
+				$Journal._fixed_text = formatted_text;
+			}
+			
 			this._sidebarWindow.activate();
 			this._textWindow.refresh();
 		};
