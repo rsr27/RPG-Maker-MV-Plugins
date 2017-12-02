@@ -6,6 +6,9 @@
 //
 // Changelog:
 //
+// v1.2:
+// Fixed a bug when choosing new game wouldn't clear the previous journal.
+//
 // v1.1:
 // Added wordwrapping and the label of the selected entry.
 //
@@ -110,6 +113,21 @@
 		};
 		
 		// -----------------------------------------------------
+		
+		var newAlias = DataManager.setupNewGame;
+		
+		DataManager.setupNewGame = function() {
+			
+			newAlias.call(this);
+			
+			$Journal._display_entry = 0;
+			$Journal._fixed_text = "";
+			
+			$Journal._id = [];
+			$Journal._title = [];
+			$Journal._entry = [];
+						
+		};
 		
 		var saveAlias = DataManager.makeSaveContents;
 		
