@@ -2,9 +2,13 @@
 // Journal
 // by rsr27
 // Date: 11/26/2017
-// v1.0
+// v1.3
 //
 // Changelog:
+//
+// v1.3:
+// Added the ability to use no underscores for text, text wrapping fixes, and
+// escape sequence support. Selected entries are highlighted.
 //
 // v1.2:
 // Fixed a bug when choosing new game wouldn't clear the previous journal.
@@ -112,7 +116,6 @@
 			return text;
 		};
 		
-		// -----------------------------------------------------
 		
 		var newAlias = DataManager.setupNewGame;
 		
@@ -177,8 +180,12 @@
 			this.contents.clear();
 			
 			for (var i = 0; i < this.maxItems(); i++ ) {
+				if ($Journal._display_entry == i) {
+					this.changeTextColor(this.systemColor());
+				}
 				var rectangle = this.itemRectForText(i);
-				this.drawText($Journal._title[i], rectangle.x, rectangle.y, rectangle.width, "center");
+				this.drawText(this.convertEscapeCharacters($Journal._title[i]), rectangle.x, rectangle.y, rectangle.width, "center");
+				this.resetTextColor();
 			}
 							
 		};
@@ -258,9 +265,9 @@
 				var text_array = text.split("\n");
 
 				this.changeTextColor(this.systemColor());	
-				this.drawText($Journal._title[$Journal._display_entry], 0, 0, Graphics.boxWidth, "left");
+				this.drawText(this.convertEscapeCharacters($Journal._title[$Journal._display_entry]), 0, 0, Graphics.boxWidth, "left");
 				
-									this.resetTextColor();
+				this.resetTextColor();
 				for (var i = 0; i < text_array.length; i++) {
 					this.drawText(text_array[i], 0, (i + 1) * (this.fittingHeight(1) / 2), Graphics.boxWidth, "left");
 				};
@@ -289,35 +296,45 @@
 		Scene_Journal.prototype.onCategoryOk = function() {
 			
 			$Journal._display_entry = this._sidebarWindow._index;
+			this._sidebarWindow.refresh();
 			
 			if ($Journal._display_entry >= 0 && $Journal._display_entry < $Journal._entry.length) {
 				
+				var src_text = $Journal._entry[$Journal._display_entry];
 				var formatted_text = "";
 				var last_space = 0;
 				var last_start = 0;
 				
-				for (var i = 0; i < $Journal._entry[$Journal._display_entry].length; i++) {
+				src_text = this._sidebarWindow.convertEscapeCharacters(src_text);
+				
+				for (var i = 0; i < src_text.length; i++) {
 					
-					var c = $Journal._entry[$Journal._display_entry][i];
+					var c = src_text[i];
 					
 					if (c == ' ') {
 						last_space = i;
 					}
 					
-					var w = this._textWindow.measureText($Journal._entry[$Journal._display_entry].substring(last_start, i).trim());
+					var l = i + 1;
+					
+					if (i + 1 >= src_text.length) {
+						l = i;
+					}
+					
+					var w = this._textWindow.measureText(src_text.substring(last_start, l).trim());
 					
 					var text = "";
 			
 					if (w + 36 > TEXT_AREA_WIDTH) {
 						
-						text = $Journal._entry[$Journal._display_entry].substring(last_start, last_space).trim();
+						text = src_text.substring(last_start, last_space).trim();
 						formatted_text += text + "\n";
 						last_start = last_space + 1;
 						i = last_start;		
 						continue;
 					}
-					else if (i == $Journal._entry[$Journal._display_entry].length - 1) {
-						text = $Journal._entry[$Journal._display_entry].substring(last_start - 1, $Journal._entry[$Journal._display_entry].length).trim();
+					else if (i == src_text.length - 1) {
+						text = src_text.substring(last_start - 1, src_text.length).trim();
 						formatted_text += text;
 						break;
 					}
@@ -351,6 +368,19 @@
 		var openJournal = function() {
 			SceneManager.push(Scene_Journal);
 		};
+		
+		var journalHasEntry = function(entry) {
+			
+			for (var i = 0; i < $Journal._entry.length; i++ ) {
+				if ($Journal._id[i] == args[1]) {
+					return true;
+				}
+			}
+			
+			return false;
+		};
+		
+		// -----------------------------------------------------
 		
 		if (parameters['Menu Command'] == 'true') {
 			
@@ -387,6 +417,10 @@
 						case 'entry':
 							args[2] = parseText(args[2]);
 							args[3] = parseText(args[3]);
+							
+							for (i = 4; i < args.length; i++) {
+								args[3] += " " + parseText(args[i]);
+							}
 							
 							$Journal._id.push(args[1]);
 							$Journal._title.push(args[2]);
