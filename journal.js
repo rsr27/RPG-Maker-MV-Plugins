@@ -2,9 +2,13 @@
 // Journal
 // by rsr27
 // Date: 11/26/2017
-// v1.3
+// v2.0
 //
 // Changelog:
+//
+// v2.0:
+// Huge changes: Added categories, colored text support, new text when a new
+// entry is added, selection indicator, and image support.
 //
 // v1.3:
 // Added the ability to use no underscores for text, text wrapping fixes, and
@@ -40,6 +44,10 @@
  * @desc If true, add a command on the main menu next to formations.
  * @default true
  *
+ * @param Category Names
+ * @desc The names of the categories for the database.
+ * @default Journal,Quests,Recipes,Lore
+ *
  * @help Plugin commands:
  *
  * ================================================================================
@@ -50,7 +58,7 @@
  * ================================================================================
  *
  * ================================================================================
- * Journal add [id] [title] [text]
+ * Journal add [id] [category] [title] [text]
  * --------------------------------------------------------------------------------
  * Adds a journal entry with the supplied parameters. Use underscores "_" to be
  * replaced with spaces.
@@ -92,30 +100,33 @@
  
 	(function() {
 		
+		var parameters = PluginManager.parameters('journal');
+		
 		// Create our global object.
 		$Journal = new Object(null);
 		
-		$Journal._display_entry = 0;
-		$Journal._fixed_text = "";
-		
-		$Journal._id = [];
-		$Journal._title = [];
-		$Journal._entry = [];
-		
 		const TEXT_AREA_WIDTH = 500;
 		
-		var parameters = PluginManager.parameters('journal');
+		function Entry () {
+			this._id = "";
+			this._title = "";
+			this._entry = "";
+			this._image = "";
+			this._read = false;
+			this._extra = 0;
+		}
 		
 		var parseText = function(text) {
 			text = text.split("[n]").join("\n");
 			text = text.replace(new RegExp("_", "g"), " ");
-			
-			// TODO: Replace game variables
-			text = text.split("\\V[2]").join($gameVariables.value(2));
-			
 			return text;
 		};
 		
+		var removeTextEscapeSequences = function(text) {
+			var exp = /(\\[A-Z]*)[[0-9]*[\]]/g;
+			var new_text = text.replace(exp, "");
+			return new_text;
+		};
 		
 		var newAlias = DataManager.setupNewGame;
 		
@@ -125,10 +136,21 @@
 			
 			$Journal._display_entry = 0;
 			$Journal._fixed_text = "";
+			$Journal._selected_category = -1;
+			$Journal._active_image = null;
 			
-			$Journal._id = [];
-			$Journal._title = [];
-			$Journal._entry = [];
+			$Journal._entry_category = [];
+			
+			$Journal._categories = parameters['Category Names'].split(",");
+			
+			$Journal._entry_category = new Array($Journal._categories.length);
+			
+			for (var i = 0; i < $Journal._categories.length; i++) {
+				$Journal._entry_category[i] = new Object(null);
+				$Journal._entry_category[i]._entries = [];
+			}
+			
+			;
 						
 		};
 		
@@ -148,6 +170,43 @@
 			loadAlias.call(this, contents);
 			$Journal = contents.journal;
 		};
+		
+		// -----------------------------------------------------
+		
+		function Window_JournalCategory() {
+			this.initialize.apply(this, arguments);
+		}
+		
+		Window_JournalCategory.prototype = Object.create(Window_Selectable.prototype);
+		Window_JournalCategory.prototype.constructor = Window_JournalCategory;
+
+		Window_JournalCategory.prototype.initialize = function() {
+			var y = this.fittingHeight(1);
+			Window_Selectable.prototype.initialize.call(this, 0, y, Graphics.boxWidth, this.fittingHeight(1));
+			this.refresh();
+			this.select(0);
+		};
+
+		Window_JournalCategory.prototype.maxItems = function() {
+			return $Journal._categories.length;
+		};
+
+		Window_JournalCategory.prototype.maxCols = function() {
+			return $Journal._categories.length;
+		};
+		
+		Window_JournalCategory.prototype.refresh = function() {
+			
+			this.contents.clear();
+			
+			for (var i = 0; i < this.maxItems(); i++ ) {
+				var rectangle = this.itemRectForText(i);
+				this.drawText($Journal._categories[i], rectangle.x, rectangle.y, rectangle.width, "center");
+				
+			};
+		}
+		
+		
 		// -----------------------------------------------------
 		
 		function Window_JournalOption() {
@@ -157,36 +216,68 @@
 		Window_JournalOption.prototype.constructor = Window_JournalOption;
 
 		Window_JournalOption.prototype.initialize = function() {
-			Window_Selectable.prototype.initialize.call(this, 0, this.fittingHeight(1), 316, Graphics.boxHeight - this.fittingHeight(1));
+			var y = this.fittingHeight(1) * 2;
+			Window_Selectable.prototype.initialize.call(this, 0, y, 316, Graphics.boxHeight - y);
 			this.refresh();
 			this.select(0);
-			this.activate();
 		};
 
 		Window_JournalOption.prototype.maxItems = function() {
-			return $Journal._entry.length;
+			if ($Journal._selected_category == -1) 
+				return 0;
+			else {
+				return $Journal._entry_category[$Journal._selected_category]._entries.length;
+			};
+			
+			return 0;
 		};
 
 		Window_JournalOption.prototype.maxCols = function() {
 			return 1;
 		};
 
-		Window_JournalOption.prototype.changeOption = function() {
-			$Journal._display_entry = this._index;
-		};
-
 		Window_JournalOption.prototype.refresh = function() {
 			
 			this.contents.clear();
 			
+			if ($Journal._selected_category < 0)
+				return;
+			
 			for (var i = 0; i < this.maxItems(); i++ ) {
+				
+				var rectangle = this.itemRectForText(i);
+				
+				if (rectangle.y > Graphics.boxHeight - (this.fittingHeight(1) * 2))
+					continue;
+				
+				if (rectangle.y + rectangle.height < 0)
+					continue;
+				
+				var text = $Journal._entry_category[$Journal._selected_category]._entries[i]._title;
+				var read = $Journal._entry_category[$Journal._selected_category]._entries[i]._read;
+				var san_text = this.convertEscapeCharacters(text);
+				var text_header = "";
+				
+					
 				if ($Journal._display_entry == i) {
 					this.changeTextColor(this.systemColor());
+					text = removeTextEscapeSequences(text);
+					text = "---" + text + "---";
+					var w = this.textWidth(text);
+					this.drawText(text, rectangle.x, rectangle.y, rectangle.width, "center");
+					// this.drawTextEx(text, rectangle.x + (rectangle.width/2) - (w/2), rectangle.y);
 				}
-				var rectangle = this.itemRectForText(i);
-				this.drawText(this.convertEscapeCharacters($Journal._title[i]), rectangle.x, rectangle.y, rectangle.width, "center");
-				this.resetTextColor();
-			}
+				else {
+					this.resetTextColor();
+					
+					if (!read)
+						text = "\\C[16]*NEW*\\C[0] " + text;
+					
+					var w = this.textWidth(removeTextEscapeSequences(text));
+						
+					this.drawTextEx(text, rectangle.x + (rectangle.width/2) - (w/2), rectangle.y);
+					}
+				};
 							
 		};
 		
@@ -251,7 +342,8 @@
 		Window_JournalText.prototype.constructor = Window_JournalText;
 
 		Window_JournalText.prototype.initialize = function() {
-			Window_Base.prototype.initialize.call(this, 316, this.fittingHeight(1), TEXT_AREA_WIDTH, Graphics.boxHeight - this.fittingHeight(1));
+			var y = this.fittingHeight(1) * 2;
+			Window_Base.prototype.initialize.call(this, 316, y, TEXT_AREA_WIDTH, Graphics.boxHeight - y);
 			this.refresh();
 		};
 
@@ -259,20 +351,31 @@
 			
 			this.contents.clear();
 			
-			if ($Journal._entry.length > 0 && $Journal._display_entry >= 0 && $Journal._display_entry < $Journal._entry.length) {
+			if ($Journal._selected_category >= 0 && $Journal._selected_category < $Journal._entry_category.length) {
 				
-				var text = $Journal._fixed_text;
-				var text_array = text.split("\n");
+				if ($Journal._entry_category[$Journal._selected_category]._entries.length > 0 && $Journal._display_entry >= 0 && $Journal._display_entry < $Journal._entry_category[$Journal._selected_category]._entries.length) {
+					
+					var title = $Journal._entry_category[$Journal._selected_category]._entries[$Journal._display_entry]._title;
+					var text = $Journal._fixed_text;
+					var y = 0;
+					
+					var text_array = text.split("\n");
+					
+					if ($Journal._image != null) {
+						this.contents.blt($Journal._image, 0, 0, $Journal._image.width, $Journal._image.height, 0, 0);
+						y = $Journal._image.height;
+					};
 
-				this.changeTextColor(this.systemColor());	
-				this.drawText(this.convertEscapeCharacters($Journal._title[$Journal._display_entry]), 0, 0, Graphics.boxWidth, "left");
-				
-				this.resetTextColor();
-				for (var i = 0; i < text_array.length; i++) {
-					this.drawText(text_array[i], 0, (i + 1) * (this.fittingHeight(1) / 2), Graphics.boxWidth, "left");
+					this.changeTextColor(this.systemColor());	
+					this.drawTextEx(this.convertEscapeCharacters(title), 0, y, Graphics.boxWidth, "left");
+					
+					this.resetTextColor();
+					for (var i = 0; i < text_array.length; i++) {
+						this.drawTextEx(text_array[i], 0, (i + 1) * (this.fittingHeight(1) / 2) + y, Graphics.boxWidth, "left");
+					};
+					
+					
 				};
-				
-				
 			};
 		};
 		
@@ -295,56 +398,93 @@
 
 		Scene_Journal.prototype.onCategoryOk = function() {
 			
-			$Journal._display_entry = this._sidebarWindow._index;
-			this._sidebarWindow.refresh();
+			$Journal._image = null;
 			
-			if ($Journal._display_entry >= 0 && $Journal._display_entry < $Journal._entry.length) {
+			if ($Journal._selected_category >= 0 && $Journal._selected_category < $Journal._entry_category.length) {
 				
-				var src_text = $Journal._entry[$Journal._display_entry];
-				var formatted_text = "";
-				var last_space = 0;
-				var last_start = 0;
+				$Journal._display_entry = this._sidebarWindow._index;
+				this._sidebarWindow.refresh();
 				
-				src_text = this._sidebarWindow.convertEscapeCharacters(src_text);
-				
-				for (var i = 0; i < src_text.length; i++) {
+				if ($Journal._display_entry >= 0 && $Journal._display_entry < $Journal._entry_category[$Journal._selected_category]._entries.length) {
 					
-					var c = src_text[i];
-					
-					if (c == ' ') {
-						last_space = i;
-					}
-					
-					var l = i + 1;
-					
-					if (i + 1 >= src_text.length) {
-						l = i;
-					}
-					
-					var w = this._textWindow.measureText(src_text.substring(last_start, l).trim());
-					
-					var text = "";
-			
-					if (w + 36 > TEXT_AREA_WIDTH) {
+					// Preload image
+					var img_name = $Journal._entry_category[$Journal._selected_category]._entries[$Journal._display_entry]._image;
 						
-						text = src_text.substring(last_start, last_space).trim();
-						formatted_text += text + "\n";
-						last_start = last_space + 1;
-						i = last_start;		
-						continue;
-					}
-					else if (i == src_text.length - 1) {
-						text = src_text.substring(last_start - 1, src_text.length).trim();
-						formatted_text += text;
-						break;
-					}
-				};
+					if (img_name != "0") {
+						$Journal._image = ImageManager.loadPicture(img_name);
+						
+						$Journal._image.addLoadListener(function() {
+							this._textWindow.refresh(); 
+						}.bind(this));
+					};
+					
+					// Prepare the text
+					var src_text = $Journal._entry_category[$Journal._selected_category]._entries[$Journal._display_entry]._text;
+					var formatted_text = "";
+					var last_space = 0;
+					var last_start = 0;
+					
+					src_text = this._sidebarWindow.convertEscapeCharacters(src_text);
+					
+					for (var i = 0; i < src_text.length; i++) {
+						
+						var c = src_text[i];
+						
+						if (c == ' ') {
+							last_space = i;
+						}
+						
+						var l = i + 1;
+						
+						if (i + 1 >= src_text.length) {
+							l = i;
+						}
+						
+						var w = this._textWindow.measureText(src_text.substring(last_start, l).trim());
+						
+						var text = "";
 				
-				$Journal._fixed_text = formatted_text;
+						if (w + 36 > TEXT_AREA_WIDTH) {
+							
+							text = src_text.substring(last_start, last_space).trim();
+							formatted_text += text + "\n";
+							last_start = last_space + 1;
+							i = last_start;		
+							continue;
+						}
+						else if (i == src_text.length - 1) {
+							text = src_text.substring(last_start - 1, src_text.length).trim();
+							formatted_text += text;
+							break;
+						}
+					};
+					
+					$Journal._entry_category[$Journal._selected_category]._entries[$Journal._display_entry]._read = true;
+					$Journal._fixed_text = formatted_text;
+				
+					
+				}
 			}
 			
 			this._sidebarWindow.activate();
 			this._textWindow.refresh();
+		};
+		
+		Scene_Journal.prototype.selectCategory = function() {
+			$Journal._selected_category = this._categoryWindow._index;
+			this._categoryWindow.deactivate();
+			this._sidebarWindow.activate();
+			this._sidebarWindow.refresh();
+		};
+		
+		Scene_Journal.prototype.cancelEntry = function() {
+			this._sidebarWindow.select(0);
+			this._sidebarWindow.deactivate();
+			$Journal._selected_category = -1;
+			$Journal._display_entry = -1;
+			this._textWindow.refresh();
+			this._categoryWindow.activate();
+			this._sidebarWindow.refresh();
 		};
 		
 		Scene_Journal.prototype.create = function() {
@@ -353,10 +493,16 @@
 			this._titleWindow = new Window_JournalTitle();
 			this.addWindow(this._titleWindow);
 			
+			this._categoryWindow = new Window_JournalCategory();
+			this.addWindow(this._categoryWindow);
+			this._categoryWindow.setHandler('ok', this.selectCategory.bind(this));
+			this._categoryWindow.setHandler('cancel', this.popScene.bind(this));
+			this._categoryWindow.activate();
+			
 			this._sidebarWindow = new Window_JournalOption();
 			this.addWindow(this._sidebarWindow);
-			this._sidebarWindow.setHandler('cancel', this.popScene.bind(this));
 			this._sidebarWindow.setHandler('ok', this.onCategoryOk.bind(this));
+			this._sidebarWindow.setHandler('cancel', this.cancelEntry.bind(this));
 
 			this._textWindow = new Window_JournalText();
 			this.addWindow(this._textWindow);
@@ -369,7 +515,7 @@
 			SceneManager.push(Scene_Journal);
 		};
 		
-		var journalHasEntry = function(entry) {
+		var hasEntry = function(entry) {
 			
 			for (var i = 0; i < $Journal._entry.length; i++ ) {
 				if ($Journal._id[i] == args[1]) {
@@ -414,37 +560,87 @@
 							openJournal();
 						break;
 						case 'add':
-						case 'entry':
-							args[2] = parseText(args[2]);
-							args[3] = parseText(args[3]);
+						case 'entry': // add [category] [id] [image] [title] [text]
+						
+							var category 	= parseInt(args[1]);
+							var id 			= args[2];
+							var image 		= args[3];
 							
-							for (i = 4; i < args.length; i++) {
-								args[3] += " " + parseText(args[i]);
+							var k 			= 4;
+							
+							var title 		= parseText(args[k]);
+							k = k + 1;
+							var text 		= parseText(args[k]);
+							for (i = k + 1; i < args.length; i++) {
+								text += " " + parseText(args[i]);
 							}
 							
-							$Journal._id.push(args[1]);
-							$Journal._title.push(args[2]);
-							$Journal._entry.push(args[3]);
+							var b = new Entry();
+							
+							b._id = id;
+							b._title = title;
+							b._text = text;
+							b._read = false;
+							b._image = image;
+							
+							if (category < $Journal._entry_category.length) {
+								$Journal._entry_category[category]._entries.push(b);
+								$Journal._entry_category[category]._entries.sort(function(a, b) {
+									return (a._title > b._title);
+								});
+							};
+							
 						break;
-						case 'update':
-							args[2] = parseText(args[2]);
-							args[3] = parseText(args[3]);
+						case 'update': // update [type] [category] [id] [value]
 						
-							for (var i = 0; i < $Journal._entry.length; i++ ) {
-								if ($Journal._id[i] == args[1]) {
-									$Journal._title[i] = args[2];
-									$Journal._entry[i] = args[3];
-									break;
+							// update text 0 1
+							var type = args[1]; // title, text, image
+							
+							var category 	= parseInt(args[2]);
+							var id 			= args[3];
+							var value 		= parseText(args[4]);
+							
+							for (var i = 5; i < args.length; i++) {
+								value += " " + parseText(args[i]);
+							}
+							
+							for (var i = 0; i < $Journal._entry_category[category]._entries.length; i++) {
+								if ($Journal._entry_category[category]._entries[i]._id == id) {
+									if (type == 'text') {
+										$Journal._entry_category[category]._entries[i]._text = value;
+									} else if (type == 'title')  {
+										$Journal._entry_category[category]._entries[i]._title = value;
+
+									} else if (type == 'image') {
+										$Journal._entry_category[category]._entries[i]._image = value;										
+									}							
 								}
 							}
-						break;
-						case 'append':
-							args[2] = parseText(args[2]);
 						
-							for (var i = 0; i < $Journal._entry.length; i++ ) {
-								if ($Journal._id[i] == args[1]) {
-									$Journal._entry[i] += args[2];
-									break;
+						break;
+						case 'append':// append [type] [category] [id] [value]
+						
+							// update text 0 1
+							var type = args[1]; // title, text, image
+							
+							var category 	= parseInt(args[2]);
+							var id 			= args[3];
+							var value 		= parseText(args[4]);
+							
+							for (var i = 5; i < args.length; i++) {
+								value += " " + parseText(args[i]);
+							}
+							
+							for (var i = 0; i < $Journal._entry_category[category]._entries.length; i++) {
+								if ($Journal._entry_category[category]._entries[i]._id == id) {
+									if (type == 'text') {
+										$Journal._entry_category[category]._entries[i]._text += value;
+									} else if (type == 'title')  {
+										$Journal._entry_category[category]._entries[i]._title += value;
+
+									} else if (type == 'image') {
+										$Journal._entry_category[category]._entries[i]._image += value;										
+									}							
 								}
 							}
 						break;
