@@ -2,13 +2,9 @@
 // Journal
 // by rsr27
 // Date: 11/26/2017
-// v2.0
+// v1.3
 //
 // Changelog:
-//
-// v2.0:
-// Huge changes: Added categories, colored text support, new text when a new
-// entry is added, selection indicator, and image support.
 //
 // v1.3:
 // Added the ability to use no underscores for text, text wrapping fixes, and
@@ -97,25 +93,37 @@
  * ================================================================================
  *
  */
+	
+	var parameters = PluginManager.parameters('journal');
  
-	(function() {
+	function Entry () {
+		this._id = "";
+		this._title = "";
+		this._entry = "";
+		this._image = "";
+		this._read = false;
+		this._extra = 0;
+	}
+	
+	function JournalObject() {
+		this._display_entry = 0;
+		this._fixed_text = "";
+		this._selected_category = -1;
+		this._active_image = null;
 		
-		var parameters = PluginManager.parameters('journal');
+		this._entry_category = [];
 		
-		// Create our global object.
-		$Journal = new Object(null);
+		this._categories = parameters['Category Names'].split(",");
 		
-		const TEXT_AREA_WIDTH = 500;
+		this._entry_category = new Array(this._categories.length);
 		
-		function Entry () {
-			this._id = "";
-			this._title = "";
-			this._entry = "";
-			this._image = "";
-			this._read = false;
-			this._extra = 0;
+		for (var i = 0; i < this._categories.length; i++) {
+			this._entry_category[i] = new Object(null);
+			this._entry_category[i]._entries = [];
 		}
 		
+	};
+	
 		var parseText = function(text) {
 			text = text.split("[n]").join("\n");
 			text = text.replace(new RegExp("_", "g"), " ");
@@ -128,30 +136,22 @@
 			return new_text;
 		};
 		
+	$Journal = new JournalObject();
+ 
+		const TEXT_AREA_WIDTH = 500;
+		
+		// Create our global object.
+		$Journal = new JournalObject();
+		
+		
 		var newAlias = DataManager.setupNewGame;
 		
 		DataManager.setupNewGame = function() {
 			
 			newAlias.call(this);
 			
-			$Journal._display_entry = 0;
-			$Journal._fixed_text = "";
-			$Journal._selected_category = -1;
-			$Journal._active_image = null;
-			
-			$Journal._entry_category = [];
-			
-			$Journal._categories = parameters['Category Names'].split(",");
-			
-			$Journal._entry_category = new Array($Journal._categories.length);
-			
-			for (var i = 0; i < $Journal._categories.length; i++) {
-				$Journal._entry_category[i] = new Object(null);
-				$Journal._entry_category[i]._entries = [];
-			}
-			
-			;
-						
+			$Journal = new JournalObject();
+					
 		};
 		
 		var saveAlias = DataManager.makeSaveContents;
@@ -527,6 +527,9 @@
 		};
 		
 		// -----------------------------------------------------
+		
+	(function() {
+		
 		
 		if (parameters['Menu Command'] == 'true') {
 			
