@@ -6,6 +6,9 @@
 //
 // Changelog:
 //
+// v2.11:
+// Added the ability to use escape sequences in journal title.
+//
 // v2.1:
 // Added the ability to delete entries and check if an entry exists. Updated
 // descriptions of functions. Made the list not clear when switching
@@ -346,8 +349,10 @@
 
 		Window_JournalTitle.prototype.refresh = function() {
 			this.contents.clear();
-			this.changeTextColor(this.systemColor());
-			this.drawText(parameters['Title'], 0, 0, Graphics.boxWidth, "center");
+			var text = this.convertEscapeCharacters(parameters['Title']);
+			var w = this.textWidth(text);
+			this.drawTextEx(text, (Graphics.boxWidth/2) - (w/2), 0);
+			//this.drawTextEx("\\N[16]" + this.convertEscapeCharacters(parameters['Title']), 0, 0, Graphics.boxWidth, "center");
 		};
 		
 		// -----------------------------------------------------
@@ -517,7 +522,7 @@
 			this._sidebarWindow.select(0);
 			this._sidebarWindow.deactivate();
 			//$Journal._selected_category = -1;
-			//$Journal._display_entry = -1;
+			$Journal._display_entry = -1;
 			this._textWindow.refresh();
 			this._categoryWindow.activate();
 			this._sidebarWindow.refresh();
