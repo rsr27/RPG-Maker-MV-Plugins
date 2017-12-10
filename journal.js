@@ -44,6 +44,10 @@
  * @desc The names of the categories for the database.
  * @default Journal,Quests,Recipes,Lore
  *
+ * @param Entry Exists Variable
+ * @desc The index of the variable that holds the value for checking if an entry exists.
+ * @default 0
+ *
  * @help Plugin commands:
  *
  * ================================================================================
@@ -54,44 +58,64 @@
  * ================================================================================
  *
  * ================================================================================
- * Journal add [id] [category] [title] [text]
+ * Journal add [category] [id] [image] [title] [text] 
+ * Journal entry [category] [id] [image] [title] [text] 
  * --------------------------------------------------------------------------------
  * Adds a journal entry with the supplied parameters. Use underscores "_" to be
- * replaced with spaces.
+ * replaced with spaces. If image is '0', then no image will be used. Use 
+ * underscores for multiword titles.
  *
  * Example(s):
- * Journal entry tutorial Journal_Tutorial This_is_a_journal_example.
+ * Journal entry 0 tutorial 0 Tutorial Welcome to the journal plugin!
+ * Journal add 0 tutorial2 0 Tutorial_2 Welcome to the journal plugin!
  * --------------------------------------------------------------------------------
  * ================================================================================
  *
  * ================================================================================
- * Journal update [id] [title] [text]
+ * Journal update [type] [category] [id] [value]
  * --------------------------------------------------------------------------------
- * Updates a journal entry with the new values. Currently they overwrite. Future
- * updates will make a parameter of "_" be ignored.
- *
- * Example(s):
- * Journal update tutorial Journal_Tutorial_2 This_is_a_journal_example.[n][n]Text.
- * --------------------------------------------------------------------------------
- * ================================================================================
- *
- * ================================================================================
- * Journal append [id] [text]
- * --------------------------------------------------------------------------------
- * Adds the text to the specified journal entry.
+ * Updates a journal entry with the new values. Type can be 'text', 'title' or 
+ * 'image'.
  *
  * Example(s):
- * Journal append tutorial [n][n]More_text.
+ * Journal update text 0 tutorial New text starts here.
+ * Journal update title 0 tutorial New Title
+ * Journal update image 0 tutorial sexy_anime_girl
  * --------------------------------------------------------------------------------
  * ================================================================================
  *
  * ================================================================================
- * Escape sequences:
+ * Journal append [type] [category] [id] [value]
  * --------------------------------------------------------------------------------
- * [n] = New Line
+ * Adds the value to the specified journal entry. Type can be 'text' or 'title'.
+ *
+ * Example(s):
+ * Journal append text 0 tutorial More text.
+ * Journal append title 0 tutorial Version 2
  * --------------------------------------------------------------------------------
  * ================================================================================
  *
+ * ================================================================================
+ * Journal exists [category] [id]
+ * --------------------------------------------------------------------------------
+ * Puts 1 into the variable parameter when the entry exists, and a zero when it
+ * doesn't. If the parameter for variable isn't set to non-zero, nothing happens.
+ *
+ * Example(s):
+ * Journal exists 0 tutorial
+ * --------------------------------------------------------------------------------
+ * ================================================================================
+ *
+ * ================================================================================
+ * Journal delete [category] [id]
+ * --------------------------------------------------------------------------------
+ * Removes the entry from the list. The list is resorted after the remove.
+ *
+ * Example(s):
+ * Journal remove 0 tutorial
+ * --------------------------------------------------------------------------------
+ * ================================================================================
+ */
  */
 	
 	var parameters = PluginManager.parameters('journal');
@@ -640,12 +664,48 @@
 										$Journal._entry_category[category]._entries[i]._text += value;
 									} else if (type == 'title')  {
 										$Journal._entry_category[category]._entries[i]._title += value;
-
-									} else if (type == 'image') {
-										$Journal._entry_category[category]._entries[i]._image += value;										
-									}							
+									}					
 								}
 							}
+						break;
+						case 'exists': // exists [category] [id]
+							var category 	= parseInt(args[1]);
+							var id 			= args[2];
+							var found		= 0;
+							var variable_id = parseInt(parameters['Entry Exists Variable']);
+							
+							if (variable_id >= 1) {
+								
+								for (var i = 0; i < $Journal._entry_category[category]._entries.length; i++) {
+									if ($Journal._entry_category[category]._entries[i]._id == id) {
+										found = 1;
+										break;
+									}
+								}
+							
+								$gameVariables.setValue(variable_id, found);
+							}
+							
+						break;
+						case 'delete':// delete [category] [id]
+						case 'remove':// remove [category] [id]
+							var category 	= parseInt(args[1]);
+							var id 			= args[2];
+							
+						
+							for (var i = 0; i < $Journal._entry_category[category]._entries.length; i++) {
+								if ($Journal._entry_category[category]._entries[i]._id == id) {
+									$Journal._entry_category[category]._entries.splice(i,1);
+									break;
+								}
+							}
+							
+							if (category < $Journal._entry_category.length) {
+								$Journal._entry_category[category]._entries.sort(function(a, b) {
+									return (a._title > b._title);
+								});
+							};
+							
 						break;
 					}
 				}
