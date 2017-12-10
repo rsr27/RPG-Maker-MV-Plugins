@@ -1,10 +1,23 @@
 //=============================================================================
 // Journal
 // by rsr27
-// Date: 11/26/2017
-// v1.3
+// Date: 12/9/2017
+// v2.1
 //
 // Changelog:
+//
+// v2.1:
+// Added the ability to delete entries and check if an entry exists. Updated
+// descriptions of functions. Made the list not clear when switching
+// categories.
+// 
+// v2.0:
+// Huge changes: Added categories, colored text support, new text when a new
+// entry is added, selection indicator, and image support.
+//
+// v1.3:
+// Added the ability to use no underscores for text, text wrapping fixes, and
+// escape sequence support. Selected entries are highlighted.
 //
 // v1.3:
 // Added the ability to use no underscores for text, text wrapping fixes, and
@@ -116,7 +129,6 @@
  * --------------------------------------------------------------------------------
  * ================================================================================
  */
- */
 	
 	var parameters = PluginManager.parameters('journal');
  
@@ -130,9 +142,9 @@
 	}
 	
 	function JournalObject() {
-		this._display_entry = 0;
+		this._display_entry = -1;
 		this._fixed_text = "";
-		this._selected_category = -1;
+		this._selected_category = 0;
 		this._active_image = null;
 		
 		this._entry_category = [];
@@ -504,8 +516,8 @@
 		Scene_Journal.prototype.cancelEntry = function() {
 			this._sidebarWindow.select(0);
 			this._sidebarWindow.deactivate();
-			$Journal._selected_category = -1;
-			$Journal._display_entry = -1;
+			//$Journal._selected_category = -1;
+			//$Journal._display_entry = -1;
 			this._textWindow.refresh();
 			this._categoryWindow.activate();
 			this._sidebarWindow.refresh();
@@ -553,7 +565,6 @@
 		// -----------------------------------------------------
 		
 	(function() {
-		
 		
 		if (parameters['Menu Command'] == 'true') {
 			
