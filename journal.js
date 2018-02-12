@@ -133,7 +133,6 @@
  * ================================================================================
  */
 	
-	var parameters = PluginManager.parameters('journal');
  
 	function Entry () {
 		this._id = "";
@@ -145,6 +144,9 @@
 	}
 	
 	function JournalObject() {
+		
+	    var parameters = PluginManager.parameters('journal');
+	
 		this._display_entry = -1;
 		this._fixed_text = "";
 		this._selected_category = 0;
@@ -348,6 +350,7 @@
 		};
 
 		Window_JournalTitle.prototype.refresh = function() {
+			var parameters = PluginManager.parameters('journal');
 			this.contents.clear();
 			var text = this.convertEscapeCharacters(parameters['Title']);
 			var w = this.textWidth(text);
@@ -570,6 +573,8 @@
 		// -----------------------------------------------------
 		
 	(function() {
+		
+	    var parameters = PluginManager.parameters('journal');
 		
 		if (parameters['Menu Command'] == 'true') {
 			
