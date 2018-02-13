@@ -23,7 +23,7 @@
  * @author rsr27
  *
  * @param Title
- * @desc The title of the journal.
+ * @desc The title of the window.
  * @default Proficiencies
  *
  * @param Menu Command
@@ -35,6 +35,33 @@
  * @default 25
  *
  * @help Plugin commands:
+ *
+ * ================================================================================
+ * Proficiencies show
+ * --------------------------------------------------------------------------------
+ * Opens the Proficiencies window.
+ * --------------------------------------------------------------------------------
+ * ================================================================================
+ *
+ * ================================================================================
+ * Proficiencies addpoints [actor] [amount] 
+ * Proficiencies subpoints [actor] [amount] 
+ * --------------------------------------------------------------------------------
+ * Changes the number of points to spend for the actor by the amount.
+ * Example(s):
+ * Proficiencies addpoints 1 5
+ * --------------------------------------------------------------------------------
+ * ================================================================================
+ *
+ * ================================================================================
+ * Proficiencies add [actor] [variable] [switch] [max] [req] [title] [description]
+ * --------------------------------------------------------------------------------
+ * Adds a new proficiency for the actor.
+ *
+ * Example(s):
+ * Proficiencies add 4 6 0 10 0 Bow A skill for bowman who weaponize their tools...
+ * --------------------------------------------------------------------------------
+ * ================================================================================
  *
  */
 		function ProficiencyEntry () {
